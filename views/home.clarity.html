@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title ?? 'Azera Framework' }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width:   800px;
+            margin:      50px auto;
+            padding:     20px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .message {
+            background:    #f0f0f0;
+            padding:       20px;
+            border-radius: 5px;
+            margin:        20px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>{{ title ?? 'Welcome' }}</h1>
+    <div class="message">
+        {{ message ?? 'Hello from Azera!' }}
+    </div>
+    <p>
+        <a href="/about">About</a> |
+        <a href="/">Home</a>
+    </p>
+</body>
+
+</html>
