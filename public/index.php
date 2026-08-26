@@ -12,8 +12,8 @@ $ctx     = AppContext::instance();
 $request = $ctx->request();
 
 // Get the current request URI and method
-$path   = $ctx->request()->getPath();
-$method = $ctx->request()->getMethod();
+$path   = $ctx->request()->path();
+$method = $ctx->request()->method();
 
 // Match the route and dispatch
 $route = $ctx->router()->match($path, $method);
