@@ -4,8 +4,8 @@
     "description": "A starter project for the Azera PHP framework",
     "license": "MIT",
     "require": {
-        "php": ">=8.1",
-        "sailantis/azera-framework": "^1.0"
+        "php": ">=8.2",
+        "sailantis/azera-framework": "^0.1"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.0"
