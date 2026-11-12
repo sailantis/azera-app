@@ -6,23 +6,18 @@ use App\Bootstrap;
 use Azera\AppContext;
 use Azera\Http\Response;
 
-(new Bootstrap)->boot();
+(new Bootstrap())->boot();
 
 $ctx     = AppContext::instance();
 $request = $ctx->request();
 
-// Get the current request URI and method
-$path   = $ctx->request()->path();
-$method = $ctx->request()->method();
+// Match the route and dispatch. The dispatcher invokes the controller action
+// and stores the enriched route info in AppContext.
+$route = $ctx->router()->match($request->path(), $request->method());
 
-// Match the route and dispatch
-$route = $ctx->router()->match($path, $method);
-if ($route === null) {
-    // No route matched
-    $response = Response::status(404);
-} else {
-    // Dispatcher will invoke the controller action and store enriched route info in AppContext
-    $response = $ctx->dispatcher()->dispatch($route);
-}
+$response = $route === null
+    ? Response::text("404 Not Found\n", 404)
+    : $ctx->dispatcher()->dispatch($route);
+
 // Send the response to the client
 $response->send();

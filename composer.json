@@ -5,7 +5,7 @@
     "license": "MIT",
     "require": {
         "php": ">=8.2",
-        "sailantis/azera-framework": "^0.1"
+        "sailantis/azera-framework": "^0.4"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.0"
@@ -22,8 +22,14 @@
     },
     "scripts": {
         "serve": "php vendor/bin/azera serve",
-        "db": "php vendor/bin/azera db",
-        "routes": "php vendor/bin/azera routes"
+        "routes": "php vendor/bin/azera routes:list",
+        "db": "php vendor/bin/azera db:tables",
+        "test": "@php vendor/bin/phpunit"
+    },
+    "extra": {
+        "azera": {
+            "provider": "App\\Bootstrap"
+        }
     },
     "config": {
         "allow-plugins": {

@@ -1,25 +1,35 @@
 # Azera App
 
-A starter project for the [Azera PHP Framework](https://github.com/sailantis/azera-framework).
+A starter application for the [Azera PHP Framework](https://github.com/sailantis/azera-framework).
+It includes MVC routing, Clarity templates, PSR-4 autoloading and a console.
 
-## Quick Start
+## Requirements
 
-### 1. Create a New Project
+- PHP >= 8.2
+- Composer
+- `ext-pdo` and `ext-mbstring`
+
+## Getting Started
+
+### 1. Clone and Install
 
 ```bash
-composer create-project sailantis/azera-app my-app
+git clone https://github.com/sailantis/azera-app my-app
 cd my-app
+composer install
 ```
 
-### 2. Configure Environment
+### 2. Configure the Environment (optional)
 
-Copy the example environment file and configure your settings:
+The application can start without this file. Database tasks require it. Create
+`env.php` from the example:
 
 ```bash
 cp env.example.php env.php
 ```
 
-Edit `env.php` with your database credentials and application settings.
+When `env.php` exists, `boot()` loads it and registers a lazy `default` database
+connection using the `DB_*` constants. The connection is opened when a query runs.
 
 ### 3. Run the Development Server
 
@@ -33,96 +43,183 @@ Or use the Azera CLI directly:
 php vendor/bin/azera serve
 ```
 
-The application will be available at `http://localhost:8080`.
-
-### 4. Explore Available Commands
+Both commands start the server at `http://localhost:8000` by default. Pass
+`--port=` to use a different port:
 
 ```bash
-# List all routes
-php vendor/bin/azera routes
+php vendor/bin/azera serve --port=8080
+```
 
-# Check application status
+### 4. Use the CLI
+
+```bash
+# List registered routes
+php vendor/bin/azera routes:list
+
+# Show the framework version, resolved bootstrap and view engine
 php vendor/bin/azera about
 
-# Database operations
-php vendor/bin/azera db
+# List available tasks and actions
+php vendor/bin/azera help
 ```
+
+The `composer routes` and `composer db` scripts run `routes:list` and `db:tables`,
+respectively.
 
 ## Project Structure
 
-```
+```text
 azera-app/
 ├── app/
-│   ├── Bootstrap.php          # Application bootstrap
-│   ├── AppContext.php          # Application context
-│   └── Controllers/           # Your controllers
+│   ├── Bootstrap.php           # BootstrapProvider: views, database, routes
+│   └── Controllers/            # Your controllers
 │       └── IndexController.php
 ├── public/
-│   └── index.php              # Entry point
-├── views/                     # View templates
-│   ├── home.php
-│   └── about.php
-├── env.example.php            # Environment example
+│   └── index.php               # Entry point
+├── tests/
+│   └── RoutesTest.php          # Smoke tests for the shipped routes
+├── views/                      # Clarity templates
+│   ├── home.clarity.html
+│   └── about.clarity.html
+├── env.example.php             # Environment example
+├── phpunit.xml
 └── composer.json
 ```
 
-## Adding Routes
+## Routing
 
-Edit `app/Bootstrap.php` and add routes in the `registerRoutes()` method:
+[app/Bootstrap.php](app/Bootstrap.php) implements
+`Azera\Boot\BootstrapProvider`, which allows the `azera` CLI to discover and
+start the application. Add routes in `registerRoutes()`:
 
 ```php
-public function registerRoutes(Router $router): void
+private function registerRoutes(Router $router): void
 {
-    $router->get('/', [Controllers\IndexController::class, 'index']);
-    $router->get('/about', [Controllers\IndexController::class, 'about']);
-    
-    // Add your routes here
-    $router->get('/hello/{name}', [Controllers\IndexController::class, 'hello']);
+    $router->controller(Controllers\IndexController::class, function (Router $r): void {
+        $r->get('/', '::indexAction');
+        $r->get('/about', '::aboutAction');
+        $r->get('/hello/{name}', '::helloAction');
+    });
 }
 ```
 
-## Creating Controllers
+A handler must be a **string**. Supported forms include `'Controller::action'`,
+`::action` inside a `controller()` block, and an array of strings such as
+`['controller' => IndexController::class, 'action' => 'indexAction']`. Closures
+and objects are not supported because the route table must be serializable for
+the route cache.
 
-Create a new controller in `app/Controllers/`:
+Path variables are passed to the action as parameters with matching names:
+
+```php
+public function helloAction(string $name): string
+{
+    return 'Hello ' . $name;
+}
+```
+
+### Enabling the route cache
+
+Wrap the route declarations in `cached()`. This enables caching and identifies
+the files used to check whether the route table is current:
+
+```php
+$router->cached(__FILE__, function (Router $r): void {
+    // ...routes...
+});
+```
+
+The first request that reads the router builds the table and writes it to a
+derived temporary path. Later requests load the cached table with `require`.
+`routes:status` reports whether the cache is current, `routes:cache` rebuilds it,
+and `routes:clear` removes it.
+
+## Controllers
+
+Create a controller in `app/Controllers/` that extends
+`Azera\Core\Controller`:
 
 ```php
 <?php
 
 namespace App\Controllers;
 
-use Core\Http\Request;
-use Core\Http\Response;
+use Azera\Http\Request;
+use Azera\Http\Response;
 
-class HelloController
+class HelloController extends \Azera\Core\Controller
 {
-    public function greet(Request $request): Response
+    public function greetAction(Request $request, string $name): Response
     {
-        $name = $request->param('name');
-        return Response::view('hello.php', [
+        return Response::json([
             'title' => 'Hello ' . $name,
-            'name' => $name
+            'secure' => $request->isSecure(),
         ]);
     }
 }
 ```
 
-## Database Setup
+The dispatcher converts action return values as follows: a `Response` is sent
+unchanged, a `string` becomes an HTML response, an `array` becomes JSON, an
+`int` is used as the status code, and `null` becomes status `204`. The container
+injects parameters typed as `Request`.
 
-1. Configure your database in `env.php`
-2. Run migrations (if available):
-   ```bash
-   php vendor/bin/azera db:migrate
-   ```
-3. Or create tables directly:
-   ```bash
-   php vendor/bin/azera db:tables
-   ```
+## Views
+
+The starter renders Clarity templates from `views/`. `configureViews()`
+registers a lazy factory for the view engine, so booting the application does
+not create the engine:
+
+```php
+private function configureViews(AppContext $ctx): void
+{
+    $viewsPath = \dirname(__DIR__) . '/views';
+
+    $ctx->set(
+        ViewEngine::class,
+        fn() => (new ClarityEngine())->setViewPath($viewsPath),
+    );
+}
+```
+
+Render a template from a controller with
+`$this->view()->render('home', ['title' => 'Welcome'])`. The `.clarity.html`
+extension is implied. Run `php vendor/bin/azera make:view users.index` to create
+`views/users/index.clarity.html`.
+
+## Database
+
+Define the `DB_*` constants in `env.php`. `boot()` registers a factory for the
+`default` database role, so its PDO connection opens on first use:
+
+```php
+$db = \Azera\AppContext::instance()->dbManager()->get('default');
+$rows = $db->query('SELECT * FROM users')->fetchAll();
+```
+
+Useful tasks:
+
+```bash
+php vendor/bin/azera db:tables              # List tables
+php vendor/bin/azera db:table <name>        # Show a table's columns
+php vendor/bin/azera db:query "SELECT 1"    # Run raw SQL
+php vendor/bin/azera migrate:diff           # Model definitions vs. live schema
+php vendor/bin/azera model:sync <Model>     # Sync a model from its table
+```
+
+Add roles with `dbManager()->set('analytics', fn() => new Database(...))`, then
+retrieve them with `get('analytics')`.
 
 ## Testing
 
 ```bash
-./vendor/bin/phpunit
+composer test
 ```
+
+PHPUnit reads [phpunit.xml](phpunit.xml) and runs the tests in `tests/`.
+[tests/RoutesTest.php](tests/RoutesTest.php) starts the application, matches
+each included route and checks the rendered page. Run `php
+vendor/bin/azera test` to execute the same suite through the CLI.
 
 ## License
 
@@ -130,5 +227,6 @@ MIT
 
 ## Resources
 
-- [Azera Framework Documentation](https://github.com/sailantis/azera-framework)
+- [Azera Framework Documentation](https://github.com/sailantis/azera-framework/tree/main/docs)
+- [Framework CHANGELOG](https://github.com/sailantis/azera-framework/blob/main/CHANGELOG.md)
 - [Issue Tracker](https://github.com/sailantis/azera-app/issues)
