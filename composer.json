@@ -24,7 +24,10 @@
         "serve": "php vendor/bin/azera serve",
         "routes": "php vendor/bin/azera routes:list",
         "db": "php vendor/bin/azera db:tables",
-        "test": "@php vendor/bin/phpunit"
+        "test": "@php vendor/bin/phpunit",
+        "post-create-project-cmd": [
+            "@php -r \"echo PHP_EOL . 'Azera App is ready. Start the dev server with: composer serve' . PHP_EOL;\""
+        ]
     },
     "extra": {
         "azera": {

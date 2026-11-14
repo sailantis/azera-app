@@ -11,13 +11,18 @@ It includes MVC routing, Clarity templates, PSR-4 autoloading and a console.
 
 ## Getting Started
 
-### 1. Clone and Install
+### 1. Create the Project
 
 ```bash
-git clone https://github.com/sailantis/azera-app my-app
+composer create-project sailantis/azera-app my-app
 cd my-app
-composer install
 ```
+
+`create-project` downloads the skeleton, installs `sailantis/azera-framework`
+and its dependencies, and leaves you without the upstream Git history, so the
+project is ready to become your own repository.
+
+Alternatively, clone the repository and run `composer install` yourself.
 
 ### 2. Configure the Environment (optional)
 
